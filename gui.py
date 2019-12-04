@@ -1,8 +1,7 @@
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 from tkinter import *
 from functools import partial
 import hashlib
-import checksum
 
 def sha256(self):
     hash_sha256 = hashlib.sha256()
@@ -70,20 +69,33 @@ md5_radio.grid(column=3, row=0)
 results = Label(root, text="results text")
 results.grid(column=0, row=2)
 
+def compare(self, checksum):
+    if self == checksum:
+        info = "\n", self, "\n", checksum, "\nChecksums match."
+        results.configure(text=info)
+        #scan(self)
+    else:
+        info = "\n", self, "\n", checksum, "\nChecksums do not match."
+        results.configure(text=info)
 
-def calculate_hash():
+def calculate_hash(hash, path, checksum):
+    dispatcher = {1: sha256, 2: sha1, 3: md5}
+    try:
+        output = dispatcher[hash](path)
+        compare(output, checksum)
+    except NameError:
+        results.configure(text="ERROR")
+
+def check():
     hash = selected.get()
     checksum = checksum_entry.get().lower()
     path = path_entry.get()
-    dispatcher = {1: sha256, 2: sha1, 3: md5}
-    try:
-        results.configure(text=dispatcher[hash](path))
-    except NameError:
-        #messagebox.showinfo('ERROR', 'Hash function is not available.')
-        results.configure(text="ERROR")
-    #compare(output, checksum)
+    if len(path) != 0 and len(checksum) != 0:
+        calculate_hash(hash, path, checksum)
+    else:
+        results.configure(text="ERROR: File and/or checksum not provided.")
 
-check_button = Button(frame2, text="Check", command=calculate_hash)
+check_button = Button(frame2, text="Check", command=check)
 check_button.grid(column=2, row=1)
 
 # file = path_entry.get()
