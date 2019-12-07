@@ -1,6 +1,5 @@
 from tkinter import filedialog
 import tkinter as tk
-# from functools import partial
 import hashlib
 import requests
 import sys
@@ -36,7 +35,6 @@ def choose_file():
     root.filename = filedialog.askopenfilename(
         initialdir="C:/Users/T/Downloads",
         title="Select File"
-        # filetypes=(("jpeg files", "*.jpg"), ("all files", "*.*"))
         )
     path_entry.delete(0, tk.END)
     path_entry.insert(0, root.filename)
@@ -80,6 +78,7 @@ results.grid(column=0, row=2)
 
 
 def compare(self, checksum):
+    """Compare checksums, show results, and call scan with entered checksum."""
     if self == checksum:
         info = "\n", self, "\n", checksum, "\nChecksums match."
         results.configure(text=info)
@@ -90,8 +89,11 @@ def compare(self, checksum):
 
 
 def scan(self):
-    # Virustotal public API limited to 4 requests/second
-    # resource argument can be md5, sha1, or sha256
+    """Use VT API to analyze calculated checksum.
+
+    The Virustotal public API is limited to 4 requests/second.
+    Resource argument can be md5, sha1, or sha256.
+    """
     path = os.path.abspath(os.path.dirname(sys.argv[0]))
     key_path = os.path.join(path, "key.txt")
     key = open(key_path, "r")
@@ -104,6 +106,7 @@ def scan(self):
 
 
 def parse(self):
+    """Parse VT API response and display results."""
     response_code = self['response_code']
     message = self['verbose_msg']
 
@@ -118,14 +121,15 @@ def parse(self):
 
 def calculate_hash(hash, path, checksum):
     dispatcher = {1: sha256, 2: sha1, 3: md5}
+    output = dispatcher[hash](path)
     try:
-        output = dispatcher[hash](path)
         compare(output, checksum)
     except NameError:
         results.configure(text="ERROR")
 
 
 def check():  # break up and replace with a lambda?
+    """Gather variables & ensure none are blank before comparing hashes."""
     hash = selected.get()
     checksum = checksum_entry.get().lower()
     path = path_entry.get()
@@ -138,7 +142,6 @@ def check():  # break up and replace with a lambda?
 check_button = tk.Button(frame2, text="Check", command=check)
 check_button.grid(column=2, row=1)
 
-# file = path_entry.get()
 # check that text is not empty before running, and that file exists (it should, but could be edited)
 # c:/users/t/downloads/cmder.7z
 # 99D51AD7B1CC518082E7E73A56DE24DE249CD0D5090C78DAE87A591F96E081BA
