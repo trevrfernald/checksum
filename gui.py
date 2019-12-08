@@ -5,44 +5,121 @@ import requests
 import sys
 import os
 import json
+import webbrowser
 
 
-def sha256(self):
-    hash_sha256 = hashlib.sha256()
-    with open(self, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_sha256.update(chunk)
-    return hash_sha256.hexdigest()
+class DataSet():
+    """Methods for file + checksum + hash function object."""
+    def __init__(self, hash_function, path, checksum):
+        self.hash_function = hash_function
+        self.path = path
+        self.checksum = checksum
+        self.calculated_checksum = self.calculate_checksum()
 
+    def calculate_checksum(self):
+        """Calculate the checksum of the entered file path.
 
-def sha1(self):
-    hash_sha1 = hashlib.sha1()
-    with open(self, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_sha1.update(chunk)
-    return hash_sha1.hexdigest()
+        Choose hash function with dispatcher using hash_function,
+        then calculate the correct digest and return to set
+        calulated_checksum.
+        """
+        dispatcher = {1: hashlib.sha256, 2: hashlib.sha1, 3: hashlib.md5}
+        calculated_checksum = dispatcher[self.hash_function]()
+        with open(self.path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                calculated_checksum.update(chunk)
+        return calculated_checksum.hexdigest()
 
+    def compare(self):
+        """Compare checksums, show results, and call scan with entered
+        checksum.
+        """
+        if self.calculated_checksum == self.checksum:
+            info = '''Checksums match.
+                    Calculated checksum: {}
+                    Entered checksum: {}'''
+            info = info.format(self.calculated_checksum, self.checksum)
+            comparison_results.configure(text=info)
+        else:
+            info = '''CHECKSUMS DO NOT MATCH.
+                    Check to make sure checksum was copied correctly.
+                    Check to make sure file path was chosen correctly.
+                    Calculated checksum: {}
+                    Entered checksum: {}'''
+            info = info.format(self.calculated_checksum, self.checksum)
+            comparison_results.configure(text=info)
 
-def md5(self):
-    hash_md5 = hashlib.md5()
-    with open(self, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+    def scan(self):
+        """Use VT API to analyze calculated checksum, then parse results.
+
+        The Virustotal public API is limited to 4 requests/second.
+        Resource argument can be md5, sha1, or sha256.
+        """
+        path = os.path.abspath(os.path.dirname(sys.argv[0]))
+        key_path = os.path.join(path, "key.txt")
+        key = open(key_path, "r")
+
+        url = 'https://www.virustotal.com/vtapi/v2/file/report'
+        params = {'apikey': key, 'resource': self.calculated_checksum}
+        response = requests.get(url, params=params)
+        data = json.loads(response.text)
+        response_code = data['response_code']
+        message = data['verbose_msg']
+
+        if response_code == 1:
+            info = '''{}
+                    Number of positives: {}
+                    Total scans: {}'''
+            info = info.format(message, data['positives'], data['total'])
+            scan_results.configure(text=info)
+            create_details(data['permalink'])
+        elif response_code == 0:
+            scan_results.configure(
+                text="Item requested is not present in VirusTotal database.")
+        else:
+            scan_results.configure(text=message)
 
 
 def choose_file():
+    """Action to allow user to select a file with Browse button."""
     root.filename = filedialog.askopenfilename(
-        initialdir="C:/Users/T/Downloads",
-        title="Select File"
-        )
+        initialdir=str(os.path.join(
+            os.path.join(os.environ['USERPROFILE']), 'Downloads')),
+        title="Select File")
     path_entry.delete(0, tk.END)
     path_entry.insert(0, root.filename)
 
 
+def callback(url):
+    """Action to allow user to view detailed link after scan completion."""
+    webbrowser.open_new(url)
+
+
+def create_details(details):
+    """Create a button to allow user to open link."""
+    details_button = tk.Button(root, text="Details",
+                               command=lambda: callback(details))
+    details_button.grid(row=4)
+
+
+def check():
+    """Gather variables & ensure none are blank before comparing hashes."""
+    hash_function = selected.get()
+    checksum = checksum_entry.get().lower()
+    path = path_entry.get()
+    if len(path) != 0 and len(checksum) != 0:
+        dataset = DataSet(hash_function, path, checksum)
+        dataset.calculate_checksum()
+        dataset.compare()
+        dataset.scan()
+    else:
+        comparison_results.configure(text="ERROR: File and/or checksum not provided.")
+
+
+# create window and elements to allow for initial interaction
 root = tk.Tk()
 root.title("Checksum Checker")
-root.geometry('500x300')
+root.geometry('600x300')
 
 frame1 = tk.Frame(root)
 frame1.grid(column=0, row=0)
@@ -73,77 +150,12 @@ sha1_radio.grid(column=2, row=0)
 md5_radio = tk.Radiobutton(frame2, text='MD5', value=3, variable=selected)
 md5_radio.grid(column=3, row=0)
 
-results = tk.Label(root, text="results text")
-results.grid(column=0, row=2)
-
-
-def compare(self, checksum):
-    """Compare checksums, show results, and call scan with entered checksum."""
-    if self == checksum:
-        info = "\n", self, "\n", checksum, "\nChecksums match."
-        results.configure(text=info)
-        # scan(self)
-    else:
-        info = "\n", self, "\n", checksum, "\nChecksums do not match."
-        results.configure(text=info)
-
-
-def scan(self):
-    """Use VT API to analyze calculated checksum.
-
-    The Virustotal public API is limited to 4 requests/second.
-    Resource argument can be md5, sha1, or sha256.
-    """
-    path = os.path.abspath(os.path.dirname(sys.argv[0]))
-    key_path = os.path.join(path, "key.txt")
-    key = open(key_path, "r")
-
-    url = 'https://www.virustotal.com/vtapi/v2/file/report'
-    params = {'apikey': key, 'resource': self}
-    response = requests.get(url, params=params)
-    data = json.loads(response.text)
-    parse(data)
-
-
-def parse(self):
-    """Parse VT API response and display results."""
-    response_code = self['response_code']
-    message = self['verbose_msg']
-
-    if response_code == 1:
-        print("\n", message, "\n", "Number of positives: ", self['positives'], "\n", sep="")
-        print("Total scans: ", self['total'], "\n", self['permalink'], sep="")
-    elif response_code == 0:
-        print("Item requested is not present in VirusTotal dataset.")
-    else:
-        print(message)
-
-
-def calculate_hash(hash, path, checksum):
-    dispatcher = {1: sha256, 2: sha1, 3: md5}
-    output = dispatcher[hash](path)
-    try:
-        compare(output, checksum)
-    except NameError:
-        results.configure(text="ERROR")
-
-
-def check():  # break up and replace with a lambda?
-    """Gather variables & ensure none are blank before comparing hashes."""
-    hash = selected.get()
-    checksum = checksum_entry.get().lower()
-    path = path_entry.get()
-    if len(path) != 0 and len(checksum) != 0:
-        calculate_hash(hash, path, checksum)
-    else:
-        results.configure(text="ERROR: File and/or checksum not provided.")
-
+comparison_results = tk.Message(root, text="", width=500)
+comparison_results.grid(column=0, row=2)
+scan_results = tk.Message(root, text="", width=500)
+scan_results.grid(column=0, row=3)
 
 check_button = tk.Button(frame2, text="Check", command=check)
 check_button.grid(column=2, row=1)
-
-# check that text is not empty before running, and that file exists (it should, but could be edited)
-# c:/users/t/downloads/cmder.7z
-# 99D51AD7B1CC518082E7E73A56DE24DE249CD0D5090C78DAE87A591F96E081BA
 
 root.mainloop()
