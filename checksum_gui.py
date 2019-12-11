@@ -1,3 +1,12 @@
+"""This program compares the checksums of a file and retrieves VirusTotal data.
+
+The program displays a gui which asks for a file path, a checksum, and a hash
+function. Upon clicking 'check,' the selected hash function is applied to the
+file entered. The calculated checksum is compared to the entered checksum, and
+the calculated checksum is sent to VirusTotal by API to retrieve scan
+information. Results of the comparison and scans are displayed to the user.
+"""
+
 from tkinter import filedialog
 import tkinter as tk
 import hashlib
@@ -8,8 +17,15 @@ import json
 import webbrowser
 
 
-class DataSet():
-    """Methods for file + checksum + hash function object."""
+class DataSet(object):
+    """Methods for file + checksum + hash function object.
+
+    Attributes:
+        hash_function: sha256, sha1, or md5 (1, 2, or 3 resp.)
+        path: path of file to hash and scan
+        checksum: checksum of downloaded file from web source
+        calculated_checksum: hashlib checksum of downloaded file from file path
+    """
     def __init__(self, hash_function, path, checksum):
         self.hash_function = hash_function
         self.path = path
@@ -17,7 +33,7 @@ class DataSet():
         self.calculated_checksum = self.calculate_checksum()
 
     def calculate_checksum(self):
-        """Calculate the checksum of the entered file path.
+        """Calculates the checksum of the entered file path.
 
         Choose hash function with dispatcher using hash_function,
         then calculate the correct digest and return to set
@@ -31,13 +47,11 @@ class DataSet():
         return calculated_checksum.hexdigest()
 
     def compare(self):
-        """Compare checksums, show results, and call scan with entered
-        checksum.
-        """
+        """Compares calculated and entered checksums, then returns result."""
         if self.calculated_checksum == self.checksum:
             info = '''Checksums match.
-                    Calculated checksum: {}
-                    Entered checksum: {}'''
+                    Calculated checksum:\n{}
+                    Entered checksum:\n{}'''
             info = info.format(self.calculated_checksum, self.checksum)
             comparison_results.configure(text=info)
         else:
@@ -50,7 +64,7 @@ class DataSet():
             comparison_results.configure(text=info)
 
     def scan(self):
-        """Use VT API to analyze calculated checksum, then parse results.
+        """Uses VT API to analyze calculated checksum, then parses results.
 
         The Virustotal public API is limited to 4 requests/second.
         Resource argument can be md5, sha1, or sha256.
@@ -96,14 +110,14 @@ def callback(url):
 
 
 def create_details(details):
-    """Create a button to allow user to open link."""
+    """Creates a button to allow user to open link."""
     details_button = tk.Button(root, text="Details",
                                command=lambda: callback(details))
     details_button.grid(row=4)
 
 
-def check():
-    """Gather variables & ensure none are blank before comparing hashes."""
+def check():  # add functionality to wipe previous results from results frame
+    """Gathers variables & ensures none are blank before comparing hashes."""
     hash_function = selected.get()
     checksum = checksum_entry.get().lower()
     path = path_entry.get()
@@ -116,7 +130,6 @@ def check():
         comparison_results.configure(text="ERROR: File and/or checksum not provided.")
 
 
-# create window and elements to allow for initial interaction
 root = tk.Tk()
 root.title("Checksum Checker")
 root.geometry('600x300')
@@ -138,7 +151,6 @@ checksum_label.grid(column=0, row=1)
 checksum_entry = tk.Entry(frame1, width=50)
 checksum_entry.grid(column=1, row=1)
 
-# create buttons with for loop
 selected = tk.IntVar()
 selected.set(1)
 type_label = tk.Label(frame2, text="Hash function:")
@@ -150,6 +162,7 @@ sha1_radio.grid(column=2, row=0)
 md5_radio = tk.Radiobutton(frame2, text='MD5', value=3, variable=selected)
 md5_radio.grid(column=3, row=0)
 
+# put this into its own frame
 comparison_results = tk.Message(root, text="", width=500)
 comparison_results.grid(column=0, row=2)
 scan_results = tk.Message(root, text="", width=500)
@@ -158,4 +171,5 @@ scan_results.grid(column=0, row=3)
 check_button = tk.Button(frame2, text="Check", command=check)
 check_button.grid(column=2, row=1)
 
-root.mainloop()
+if __name__ == "__main__":
+    root.mainloop()
