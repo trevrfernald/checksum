@@ -53,7 +53,7 @@ class DataSet(object):
                     Calculated checksum:\n{}
                     Entered checksum:\n{}'''
             info = info.format(self.calculated_checksum, self.checksum)
-            comparison_results.configure(text=info)
+            return info
         else:
             info = '''CHECKSUMS DO NOT MATCH.
                     Check to make sure checksum was copied correctly.
@@ -61,7 +61,7 @@ class DataSet(object):
                     Calculated checksum: {}
                     Entered checksum: {}'''
             info = info.format(self.calculated_checksum, self.checksum)
-            comparison_results.configure(text=info)
+            return info
 
     def scan(self):
         """Uses VT API to analyze calculated checksum, then parses results.
@@ -85,91 +85,94 @@ class DataSet(object):
                     Number of positives: {}
                     Total scans: {}'''
             info = info.format(message, data['positives'], data['total'])
-            scan_results.configure(text=info)
-            create_details(data['permalink'])
+            return info
+            # create_details(data['permalink'])  # calls function to create link
         elif response_code == 0:
-            scan_results.configure(
-                text="Item requested is not present in VirusTotal database.")
+            return "Item requested is not present in VirusTotal database."
         else:
-            scan_results.configure(text=message)
+            return message
 
 
-def choose_file():
-    """Action to allow user to select a file with Browse button."""
-    root.filename = filedialog.askopenfilename(
-        initialdir=str(os.path.join(
-            os.path.join(os.environ['USERPROFILE']), 'Downloads')),
-        title="Select File")
-    path_entry.delete(0, tk.END)
-    path_entry.insert(0, root.filename)
+class MainApplication(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        root.title("Checksum Checker")
+        root.geometry('600x300')
 
+        self.frame1 = tk.Frame(root)
+        self.frame1.grid(column=0, row=0)
+        self.frame2 = tk.Frame(root)
+        self.frame2.grid(column=0, row=1)
 
-def callback(url):
-    """Action to allow user to view detailed link after scan completion."""
-    webbrowser.open_new(url)
+        self.choose_label = tk.Label(self.frame1, text="Choose file:")
+        self.choose_label.grid(column=0, row=0)
+        self.path_entry = tk.Entry(self.frame1, width=50)
+        self.path_entry.grid(column=1, row=0)
+        self.browse_button = tk.Button(self.frame1, text="Browse", command=self.choose_file)
+        self.browse_button.grid(column=2, row=0)
 
+        self.checksum_label = tk.Label(self.frame1, text="Checksum to compare against:")
+        self.checksum_label.grid(column=0, row=1)
+        self.checksum_entry = tk.Entry(self.frame1, width=50)
+        self.checksum_entry.grid(column=1, row=1)
 
-def create_details(details):
-    """Creates a button to allow user to open link."""
-    details_button = tk.Button(root, text="Details",
-                               command=lambda: callback(details))
-    details_button.grid(row=4)
+        self.selected = tk.IntVar()
+        self.selected.set(1)
+        self.type_label = tk.Label(self.frame2, text="Hash function:")
+        self.type_label.grid(column=0, row=0)
+        self.sha256_radio = tk.Radiobutton(self.frame2, text='SHA256', value=1, variable=self.selected)
+        self.sha256_radio.grid(column=1, row=0)
+        self.sha1_radio = tk.Radiobutton(self.frame2, text='SHA1', value=2, variable=self.selected)
+        self.sha1_radio.grid(column=2, row=0)
+        self.md5_radio = tk.Radiobutton(self.frame2, text='MD5', value=3, variable=self.selected)
+        self.md5_radio.grid(column=3, row=0)
 
+        # put this into its own frame
+        self.comparison_results = tk.Message(root, text="", width=500)
+        self.comparison_results.grid(column=0, row=2)
+        self.scan_results = tk.Message(root, text="", width=500)
+        self.scan_results.grid(column=0, row=3)
 
-def check():  # add functionality to wipe previous results from results frame
-    """Gathers variables & ensures none are blank before comparing hashes."""
-    hash_function = selected.get()
-    checksum = checksum_entry.get().lower()
-    path = path_entry.get()
-    if len(path) != 0 and len(checksum) != 0:
-        dataset = DataSet(hash_function, path, checksum)
-        dataset.calculate_checksum()
-        dataset.compare()
-        dataset.scan()
-    else:
-        comparison_results.configure(text="ERROR: File and/or checksum not provided.")
+        self.check_button = tk.Button(self.frame2, text="Check", command=lambda: self.check())
+        self.check_button.grid(column=2, row=1)
 
+    def choose_file(self):
+        """Action to allow user to select a file with Browse button."""
+        root.filename = filedialog.askopenfilename(
+            initialdir=str(os.path.join(
+                os.path.join(os.environ['USERPROFILE']), 'Downloads')),
+            title="Select File")
+        self.path_entry.delete(0, tk.END)
+        self.path_entry.insert(0, root.filename)
 
-root = tk.Tk()
-root.title("Checksum Checker")
-root.geometry('600x300')
+    def callback(url):
+        """Action to allow user to view detailed link after scan completion."""
+        webbrowser.open_new(url)
 
-frame1 = tk.Frame(root)
-frame1.grid(column=0, row=0)
-frame2 = tk.Frame(root)
-frame2.grid(column=0, row=1)
+    def create_details(details):
+        """Creates a button to allow user to open link."""
+        details_button = tk.Button(root, text="Details",
+                                   command=lambda: MainApplication.callback(details))
+        details_button.grid(row=4)
 
-choose_label = tk.Label(frame1, text="Choose file:")
-choose_label.grid(column=0, row=0)
-path_entry = tk.Entry(frame1, width=50)
-path_entry.grid(column=1, row=0)
-browse_button = tk.Button(frame1, text="Browse", command=choose_file)
-browse_button.grid(column=2, row=0)
+    def check(self):  # add functionality to wipe previous results from results frame
+        """Gathers variables & ensures none are blank before comparing hashes."""
+        hash_function = self.selected.get()
+        checksum = self.checksum_entry.get().lower()
+        path = self.path_entry.get()
+        if len(path) != 0 and len(checksum) != 0:
+            dataset = DataSet(hash_function, path, checksum)
+            dataset.calculate_checksum()
+            comparison = dataset.compare()
+            self.comparison_results.configure(text=comparison)
+            scan = dataset.scan()
+            self.scan_results.configure(text=scan)
+        else:
+            self.scan_results.configure(text="ERROR: File and/or checksum not provided.")
 
-checksum_label = tk.Label(frame1, text="Checksum to compare against:")
-checksum_label.grid(column=0, row=1)
-checksum_entry = tk.Entry(frame1, width=50)
-checksum_entry.grid(column=1, row=1)
-
-selected = tk.IntVar()
-selected.set(1)
-type_label = tk.Label(frame2, text="Hash function:")
-type_label.grid(column=0, row=0)
-sha256_radio = tk.Radiobutton(frame2, text='SHA256', value=1, variable=selected)
-sha256_radio.grid(column=1, row=0)
-sha1_radio = tk.Radiobutton(frame2, text='SHA1', value=2, variable=selected)
-sha1_radio.grid(column=2, row=0)
-md5_radio = tk.Radiobutton(frame2, text='MD5', value=3, variable=selected)
-md5_radio.grid(column=3, row=0)
-
-# put this into its own frame
-comparison_results = tk.Message(root, text="", width=500)
-comparison_results.grid(column=0, row=2)
-scan_results = tk.Message(root, text="", width=500)
-scan_results.grid(column=0, row=3)
-
-check_button = tk.Button(frame2, text="Check", command=check)
-check_button.grid(column=2, row=1)
 
 if __name__ == "__main__":
+    root = tk.Tk()
+    MainApplication(root)
     root.mainloop()
