@@ -17,4 +17,11 @@ def instance():
 def test_calculate_checksum(instance):
     sha256_hash = "99D51AD7B1CC518082E7E73A56DE24DE249CD0D5090C78DAE87A591F96E081BA".lower()
     assert DataSet.calculate_checksum(instance) == sha256_hash
-    # assert DataSet.compare(instance) is True
+
+
+def test_compare(instance):
+    assert DataSet.compare(instance) is True
+
+
+def scan(instance):
+    pass  # need to use mocking here

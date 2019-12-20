@@ -47,21 +47,11 @@ class DataSet(object):
         return calculated_checksum.hexdigest()
 
     def compare(self):
-        """Compares calculated and entered checksums, then returns result."""
+        """Compares calculated and entered checksums, and returns result."""
         if self.calculated_checksum == self.checksum:
-            info = '''Checksums match.
-                    Calculated checksum:\n{}
-                    Entered checksum:\n{}'''
-            info = info.format(self.calculated_checksum, self.checksum)
-            return info
+            return True
         else:
-            info = '''CHECKSUMS DO NOT MATCH.
-                    Check to make sure checksum was copied correctly.
-                    Check to make sure file path was chosen correctly.
-                    Calculated checksum: {}
-                    Entered checksum: {}'''
-            info = info.format(self.calculated_checksum, self.checksum)
-            return info
+            return False
 
     def scan(self):
         """Uses VT API to analyze calculated checksum, then parses results.
@@ -85,8 +75,7 @@ class DataSet(object):
                     Number of positives: {}
                     Total scans: {}'''
             info = info.format(message, data['positives'], data['total'])
-            return info
-            # create_details(data['permalink'])  # calls function to create link
+            return info, data['permalink']
         elif response_code == 0:
             return "Item requested is not present in VirusTotal database."
         else:
@@ -150,11 +139,12 @@ class MainApplication(tk.Frame):
         """Action to allow user to view detailed link after scan completion."""
         webbrowser.open_new(url)
 
-    def create_details(details):
+    def create_details(self, details):
         """Creates a button to allow user to open link."""
-        details_button = tk.Button(root, text="Details",
-                                   command=lambda: MainApplication.callback(details))
-        details_button.grid(row=4)
+        self.details_button = tk.Button(root, text="Details",
+                                        command=lambda:
+                                        MainApplication.callback(details))
+        self.details_button.grid(row=4)
 
     def check(self):  # add functionality to wipe previous results from results frame
         """Gathers variables & ensures none are blank before comparing hashes."""
@@ -165,9 +155,20 @@ class MainApplication(tk.Frame):
             dataset = DataSet(hash_function, path, checksum)
             dataset.calculate_checksum()
             comparison = dataset.compare()
-            self.comparison_results.configure(text=comparison)
+            if comparison is True:
+                result = "Checksums match."
+            else:
+                result = '''CHECKSUMS DO NOT MATCH.
+                         Check to make sure checksum was copied correctly.
+                         Check to make sure file path was chosen correctly.'''
+            info = '''{}
+                   Calculated checksum: {}
+                   Entered checksum: {}'''
+            info = info.format(result, dataset.calculated_checksum, dataset.checksum)
+            self.comparison_results.configure(text=info)
             scan = dataset.scan()
-            self.scan_results.configure(text=scan)
+            self.scan_results.configure(text=scan[0])
+            self.create_details(scan[1])
         else:
             self.scan_results.configure(text="ERROR: File and/or checksum not provided.")
 
