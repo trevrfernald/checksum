@@ -29,7 +29,7 @@ class DataSet(object):
     def __init__(self, hash_function, path, checksum):
         self.hash_function = hash_function
         self.path = path
-        self.checksum = checksum
+        self.checksum = checksum.lower()
         self.calculated_checksum = self.calculate_checksum()
 
     def calculate_checksum(self):
@@ -149,11 +149,11 @@ class MainApplication(tk.Frame):
     def check(self):  # add functionality to wipe previous results from results frame
         """Gathers variables & ensures none are blank before comparing hashes."""
         hash_function = self.selected.get()
-        checksum = self.checksum_entry.get().lower()
+        checksum = self.checksum_entry.get()
         path = self.path_entry.get()
+
         if len(path) != 0 and len(checksum) != 0:
             dataset = DataSet(hash_function, path, checksum)
-            dataset.calculate_checksum()
             comparison = dataset.compare()
             if comparison is True:
                 result = "Checksums match."
