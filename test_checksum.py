@@ -1,29 +1,49 @@
 from checksum_gui import DataSet
 import pytest
-
-# arrange, act, assert
-# implement checks and tests for valid path, key presence, checksum entry
+from unittest.mock import Mock, patch
 
 
-@pytest.fixture(scope="module")
-def instance():
-    checksum = "99D51AD7B1CC518082E7E73A56DE24DE249CD0D5090C78DAE87A591F96E081BA"
-    return DataSet(1, "C:/Users/T/Downloads/cmder.7z", checksum)
-    print("teardown class instance")
-    instance.close()
+@pytest.fixture
+@patch("checksum_gui.DataSet.calculate_checksum", return_value="aaa")
+def instance(mock_calculate_checksum):
+    path_mock = Mock()
+    return DataSet(1, path_mock, "aaa")
 
 
-# @pytest.mark.parametrize(scope="module", params=[])
 def test_calculate_checksum(instance):
-    sha256_hash = "99D51AD7B1CC518082E7E73A56DE24DE249CD0D5090C78DAE87A591F96E081BA".lower()
-    assert DataSet.calculate_checksum(instance) == sha256_hash
+    assert instance.calculated_checksum == "aaa"
 
 
 def test_compare(instance):
-    print(instance.calculated_checksum)
-    print(instance.checksum)
     assert DataSet.compare(instance) is True
 
 
-def scan(instance):
-    pass  # need to use mocking here
+def test_scan(instance):
+    with patch("requests.get") as mock_get:
+        mock_get.return_value.ok = True
+        response = DataSet.scan(instance)
+    assert response is not None
+
+
+def test_scan_with_data(instance):
+    mock_get_patcher = patch('requests.get')
+    mock_get = mock_get_patcher.start()
+    data = {
+        'response_code': 1,
+        'verbose_msg': 'Scan finished, scan information embedded in this object',
+        'permalink': 'https://www.virustotal.com/file/a9ec/analysis/1273894724/',
+        'positives': 2
+        }
+
+    mock_get.return_value = Mock(ok=True)
+    mock_get.return_value.json.return_value = data
+
+    response = DataSet.scan(instance)
+    mock_get = mock_get_patcher.stop()
+
+    print(response)
+    assert response == data
+
+# def test_IOError():
+#     with pytest.raises(IOError):
+#         DataSet(1, 'file.txt', checksum)

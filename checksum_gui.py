@@ -11,10 +11,11 @@ from tkinter import filedialog
 import tkinter as tk
 import hashlib
 import requests
-import sys
 import os
-import json
 import webbrowser
+
+KEY = open("./key.txt", "r")
+URL = "https://www.virustotal.com/vtapi/v2/file/report"
 
 
 class DataSet(object):
@@ -26,7 +27,7 @@ class DataSet(object):
         checksum: checksum of downloaded file from web source
         calculated_checksum: hashlib checksum of downloaded file from file path
     """
-    def __init__(self, hash_function, path, checksum):
+    def __init__(self, hash_function, path, checksum=None):
         self.hash_function = hash_function
         self.path = path
         self.checksum = checksum.lower()
@@ -59,27 +60,26 @@ class DataSet(object):
         The Virustotal public API is limited to 4 requests/second.
         Resource argument can be md5, sha1, or sha256.
         """
-        path = os.path.abspath(os.path.dirname(sys.argv[0]))
-        key_path = os.path.join(path, "key.txt")
-        key = open(key_path, "r")
 
-        url = 'https://www.virustotal.com/vtapi/v2/file/report'
-        params = {'apikey': key, 'resource': self.calculated_checksum}
-        response = requests.get(url, params=params)
-        data = json.loads(response.text)
-        response_code = data['response_code']
-        message = data['verbose_msg']
-
-        if response_code == 1:
-            info = '''{}
-                    Number of positives: {}
-                    Total scans: {}'''
-            info = info.format(message, data['positives'], data['total'])
-            return info, data['permalink']
-        elif response_code == 0:
-            return "Item requested is not present in VirusTotal database."
+        params = {"apikey": KEY, "resource": self.calculated_checksum}
+        response = requests.get(URL, params=params)
+        if response.ok:
+            return response.json()
         else:
-            return message
+            return None
+
+        # message = data["verbose_msg"]
+        #
+        # if data["response_code"] == 1:
+        #     info = """{}
+        #             Number of positives: {}
+        #             Total scans: {}"""
+        #     info = info.format(message, data["positives"], data["total"])
+        #     return info, data["permalink"]
+        # elif response_code == 0:
+        #     return "Item requested is not present in VirusTotal database."
+        # else:
+        #     return message
 
 
 class MainApplication(tk.Frame):
@@ -87,7 +87,7 @@ class MainApplication(tk.Frame):
         tk.Frame.__init__(self, parent, *args, **kwargs)
         self.parent = parent
         root.title("Checksum Checker")
-        root.geometry('600x300')
+        root.geometry("600x300")
 
         self.frame1 = tk.Frame(root)
         self.frame1.grid(column=0, row=0)
@@ -110,11 +110,11 @@ class MainApplication(tk.Frame):
         self.selected.set(1)
         self.type_label = tk.Label(self.frame2, text="Hash function:")
         self.type_label.grid(column=0, row=0)
-        self.sha256_radio = tk.Radiobutton(self.frame2, text='SHA256', value=1, variable=self.selected)
+        self.sha256_radio = tk.Radiobutton(self.frame2, text="SHA256", value=1, variable=self.selected)
         self.sha256_radio.grid(column=1, row=0)
-        self.sha1_radio = tk.Radiobutton(self.frame2, text='SHA1', value=2, variable=self.selected)
+        self.sha1_radio = tk.Radiobutton(self.frame2, text="SHA1", value=2, variable=self.selected)
         self.sha1_radio.grid(column=2, row=0)
-        self.md5_radio = tk.Radiobutton(self.frame2, text='MD5', value=3, variable=self.selected)
+        self.md5_radio = tk.Radiobutton(self.frame2, text="MD5", value=3, variable=self.selected)
         self.md5_radio.grid(column=3, row=0)
 
         # put this into its own frame
@@ -130,7 +130,7 @@ class MainApplication(tk.Frame):
         """Action to allow user to select a file with Browse button."""
         root.filename = filedialog.askopenfilename(
             initialdir=str(os.path.join(
-                os.path.join(os.environ['USERPROFILE']), 'Downloads')),
+                os.path.join(os.environ["USERPROFILE"]), "Downloads")),
             title="Select File")
         self.path_entry.delete(0, tk.END)
         self.path_entry.insert(0, root.filename)
@@ -152,25 +152,26 @@ class MainApplication(tk.Frame):
         checksum = self.checksum_entry.get()
         path = self.path_entry.get()
 
-        if len(path) != 0 and len(checksum) != 0:
+        if len(path) != 0:
             dataset = DataSet(hash_function, path, checksum)
             comparison = dataset.compare()
             if comparison is True:
                 result = "Checksums match."
             else:
-                result = '''CHECKSUMS DO NOT MATCH.
-                         Check to make sure checksum was copied correctly.
-                         Check to make sure file path was chosen correctly.'''
-            info = '''{}
+                result = """CHECKSUMS DO NOT MATCH.
+                         Check to make sure checksum was entered correctly.
+                         Check to make sure file path was chosen correctly."""
+            info = """{}
                    Calculated checksum: {}
-                   Entered checksum: {}'''
+                   Entered checksum: {}"""
             info = info.format(result, dataset.calculated_checksum, dataset.checksum)
             self.comparison_results.configure(text=info)
             scan = dataset.scan()
-            self.scan_results.configure(text=scan[0])
-            self.create_details(scan[1])
+            # self.scan_results.configure(text=scan[0])
+            # self.create_details(scan[1])
+            self.scan_results.configure(text=scan)
         else:
-            self.scan_results.configure(text="ERROR: File and/or checksum not provided.")
+            self.scan_results.configure(text="ERROR: File path not provided.")
 
 
 if __name__ == "__main__":
