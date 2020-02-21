@@ -4,7 +4,7 @@
 
 #### Sample Output
 
-![alt text](https://raw.githubusercontent.com/trevrfernald/checksum/blob/master/checksum_example.png)
+![alt text](https://github.com/trevrfernald/checksum/blob/master/checksum_example.png)
 
 #### Setup
 
