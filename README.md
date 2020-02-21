@@ -2,6 +2,10 @@
 
 ## Checksum comparison and VirusTotal scan
 
+#### Sample Output
+
+![alt text](https://raw.githubusercontent.com/trevrfernald/checksum/blob/master/checksum_example.png)
+
 #### Setup
 
 In order to use the application, it is necessary to sign up for the Virus Total API. More information is available at https://developers.virustotal.com/reference
