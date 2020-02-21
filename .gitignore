@@ -2,3 +2,4 @@ key.txt
 notes.txt
 venv/
 __pycache__/
+checksum.py
