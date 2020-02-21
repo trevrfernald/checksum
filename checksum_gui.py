@@ -55,7 +55,7 @@ class DataSet(object):
             return False
 
     def scan(self):
-        """Uses VT API to analyze calculated checksum, then parses results.
+        """Uses VT API to analyze calculated checksum.
 
         The Virustotal public API is limited to 4 requests/second.
         Resource argument can be md5, sha1, or sha256.
@@ -66,8 +66,7 @@ class DataSet(object):
         if response.ok:
             return response.json()
         else:
-            return None
-
+            raise IOError("Item requested is not present in VirusTotal database.")
         # message = data["verbose_msg"]
         #
         # if data["response_code"] == 1:
@@ -80,6 +79,14 @@ class DataSet(object):
         #     return "Item requested is not present in VirusTotal database."
         # else:
         #     return message
+
+    def format_response(self, response):
+        info = """{}
+               Number of positives: {}
+               Total scans: {}"""
+        return info.format(response["verbose_msg"],
+                           response["positives"],
+                           response["total"]), response["permalink"]
 
 
 class MainApplication(tk.Frame):
@@ -155,6 +162,7 @@ class MainApplication(tk.Frame):
         if len(path) != 0:
             dataset = DataSet(hash_function, path, checksum)
             comparison = dataset.compare()
+
             if comparison is True:
                 result = "Checksums match."
             else:
@@ -166,10 +174,15 @@ class MainApplication(tk.Frame):
                    Entered checksum: {}"""
             info = info.format(result, dataset.calculated_checksum, dataset.checksum)
             self.comparison_results.configure(text=info)
-            scan = dataset.scan()
-            # self.scan_results.configure(text=scan[0])
-            # self.create_details(scan[1])
-            self.scan_results.configure(text=scan)
+
+            try:
+                scan = dataset.scan()
+            except IOError as e:
+                e
+            else:
+                formatted_response = dataset.format_response(scan)
+                self.scan_results.configure(text=formatted_response[0])
+                self.create_details(formatted_response[1])
         else:
             self.scan_results.configure(text="ERROR: File path not provided.")
 

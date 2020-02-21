@@ -30,9 +30,10 @@ def test_scan_with_data(instance):
     mock_get = mock_get_patcher.start()
     data = {
         'response_code': 1,
-        'verbose_msg': 'Scan finished, scan information embedded in this object',
-        'permalink': 'https://www.virustotal.com/file/a9ec/analysis/1273894724/',
-        'positives': 2
+        'verbose_msg': 'Scan finished',
+        'permalink': 'https://www.virustotal.com/file/',
+        'positives': 2,
+        'total': 60
         }
 
     mock_get.return_value = Mock(ok=True)
@@ -41,7 +42,6 @@ def test_scan_with_data(instance):
     response = DataSet.scan(instance)
     mock_get = mock_get_patcher.stop()
 
-    print(response)
     assert response == data
 
 # def test_IOError():
