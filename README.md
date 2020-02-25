@@ -21,12 +21,3 @@ After signing up, create a file called "key.txt" and paste in a valid API key. S
 4. Choose the appropriate hash function
 5. Click Check to compare, scan, and review results
    - Click "Details" to see more information about the Virus Total scan
-
-
-#### Interpreting Results
-
-If the entered checksum does not match the checksum resulting from the hash function being applied to the selected file, the file may be malicious.
-
-When Virus Total reports positives, compare the number of positives to the total number of scans. Consider the scanners which report positives, as some scanners are prone to false-positives.
-
-Always use your best judgement and don't use suspicious files. This tool is meant to be used for informational purposes only, and is not intended to protect against malware.
